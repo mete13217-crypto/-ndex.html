@@ -1,4 +1,4 @@
-# ndex.html
+# Index.html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
