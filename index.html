@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undertale Messenger - Emochi Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            background-color: #121212;
+            color: #fff;
+            font-family: 'Courier Prime', monospace;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Ana Konteynır */
+        .app-shell {
+            width: 100%;
+            max-width: 500px;
+            height: 95vh;
+            background: #000;
+            border: 3px solid #333;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        /* Üst Başlık - Emochi Stili */
+        .app-header {
+            padding: 20px;
+            background: #1a1a1a;
+            border-bottom: 2px solid #333;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: #ffff00;
+            letter-spacing: 3px;
+        }
+
+        /* Karakter Seçme Izgarası (Giriş Ekranı) */
+        #char-selection {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .char-item {
+            background: #1a1a1a;
+            border: 2px solid #444;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .char-item:hover {
+            border-color: #fff;
+            background: #252525;
+        }
+
+        /* Sohbet Ekranı */
+        #chat-screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: #222;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .back-btn {
+            cursor: pointer;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+
+        /* Mesaj Balonları Alanı */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #080808;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 15px;
+            font-size: 16px;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .msg.bot {
+            align-self: flex-start;
+            background: #262626;
+            color: #fff;
+            border-bottom-left-radius: 2px;
+        }
+
+        .msg.user {
+            align-self: flex-end;
+            background: #ffff00;
+            color: #000;
+            border-bottom-right-radius: 2px;
+            font-weight: bold;
+        }
+
+        /* Alt Aksiyon Alanı - Emochi Butonları */
+        .chat-input-area {
+            padding: 15px;
+            background: #1a1a1a;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-top: 1px solid #333;
+        }
+
+        .action-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #555;
+        }
+
+        /* Sarsıntı Efekti */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.2s ease-in-out 0s 2; }
+
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    <div class="app-header" id="main-title">ERKEKLER</div>
+    
+    <div id="char-selection"></div>
+
+    <div id="chat-screen">
+        <div class="chat-header">
+            <span class="back-btn" onclick="closeChat()">←</span>
+            <span id="current-char-name">İsim</span>
+        </div>
+        <div class="chat-messages" id="chat-flow"></div>
+        <div class="chat-input-area" id="actions"></div>
+    </div>
+</div>
+
+<script>
+    const characters = [
+        { 
+            name: "Sans", type: "jester", 
+            intro: "n'aber dostum? kemiklerin mi sızlıyor yoksa ben mi öyle görüyorum?", 
+            joke: "iskeletler neden yalnız uyur? çünkü yanlarında yatacak bir 'vücut'ları yoktur. hehehe.",
+            act: "* Sans'a bir sosisli sandviç ısmarladın. Ketçabı fazla kaçırdı." 
+        },
+        { 
+            name: "Papyrus", type: "jester", 
+            intro: "İNSAN! MUHTEŞEM PAPYRUS'UN MESAJ KUTUSUNA DÜŞTÜN!", 
+            joke: "BİR İSKELET NEDEN GÜLMEKTEN ÖLMEZ? ÇÜNKÜ İÇİNDE GÜLECEK BİR CİĞERİ YOKTUR! NYEH HEH HEH!",
+            act: "* Papyrus'un spagettisini övdün. Mutluluktan zırhı parlıyor!" 
+        },
+        { 
+            name: "Spamton", type: "jester", 
+            intro: "HEY [[Değerli Müşteri]]! [Büyük Bir Atış] YAPMAK İÇİN WHATSAPP'TAN MI YAZIYORSUN?", 
+            joke: "BİR [[Satış Elemanı]] NEDEN KARŞIDAN KARŞIYA GEÇMİŞ? ÇÜNKÜ DİĞER TARAFTA [Yarım Fiyatına Ruh] VARDI!",
+            act: "* Spamton'a bir reklam linki attın. Hemen tıkladı!" 
+        },
+        { 
+            name: "Jevil", type: "jester", 
+            intro: "TEKERLEK DÖNÜYOR, OYUN BAŞLIYOR! HERKES HÜCREDE, BEN ÖZGÜRÜM!", 
+            joke: "KAOS! KAOS! ŞAKAYI ANLAMADIN MI? ÇÜNKÜ SEN DE BİR OYUNCAKSIN!",
+            act: "* Jevil ile beraber ekranda zıpladınız. Her şey bulanıklaştı." 
+        },
+        { 
+            name: "Asgore", type: "serious", 
+            intro: "Bir mesaj... Eski bir dosttan mı? Buyur evlat, seni dinliyorum.", 
+            tea: "Sana sanal bir fincan altın çiçek çayı ikram ediyorum. İçini ısıtır.",
+            joke: "Gülmek mi? Kalbimdeki ağırlık varken bu çok zor.",
+            confide: "Bazen geçmişin gölgeleri, krallığın ışığından daha parlak geliyor.",
+            plan: "İnsan ruhları... Onlar olmadan kimseyi özgür kılamayız."
+        },
+        { 
+            name: "King", type: "serious", 
+            intro: "Karanlığın kralına ne diyeceksin? Kelimelerini dikkatli seç.", 
+            tea: "Zayıf içecekler zayıf ruhlar içindir.",
+            joke: "Senin varlığın bu evrendeki en büyük hata.",
+            confide: "Hükmetmek yalnızlıktır. Sen bunu asla anlayamazsın.",
+            plan: "Işık saçan her şeyi karanlığa gömeceğiz."
+        },
+        { 
+            name: "Flowey", type: "serious", 
+            intro: "Yine mi sen? Ne kadar sıkıcı bir tipsin.", 
+            tea: "Çayı kafana dökmek isterdim ama ekran engel oluyor.",
+            joke: "En komik şaka: Senin tüm arkadaşlarının birer birer yok olması!",
+            confide: "Duygular mı? Onlar sadece kodlanmış hatalardır.",
+            plan: "Herkesi, her şeyi... Sileceğim!"
+        },
+        { 
+            name: "Gerson", type: "respectable", 
+            intro: "Vay canına evlat! Wa-ha-ha! Mesaj kutumu bulmuşsun.", 
+            respect: "Eski bir askere hürmet etmek sana yakışıyor evlat. Wa-ha-ha!",
+            polite: "Nazik davranman güzel. Kabuğunu her zaman dik tutmalısın.",
+            moral: "Ahlaklı olmak zordur evlat. Ama bataklıkta temiz kalan bir nilüfer gibi olmalısın."
+        }
+    ];
+
+    const selectionGrid = document.getElementById('char-selection');
+    const chatScreen = document.getElementById('chat-screen');
+    const chatFlow = document.getElementById('chat-flow');
+    const actionsArea = document.getElementById('actions');
+    const mainTitle = document.getElementById('main-title');
+
+    // Başlangıç Listesi
+    characters.forEach(char => {
+        const div = document.createElement('div');
+        div.className = 'char-item';
+        div.innerText = char.name;
+        div.onclick = () => openChat(char);
+        selectionGrid.appendChild(div);
+    });
+
+    function openChat(char) {
+        selectionGrid.style.display = 'none';
+        mainTitle.style.display = 'none';
+        chatScreen.style.display = 'flex';
+        document.getElementById('current-char-name').innerText = char.name;
+        chatFlow.innerHTML = ""; // Geçmişi temizle
+        addMessage(char.intro, 'bot');
+        setupButtons(char);
+    }
+
+    function setupButtons(char) {
+        actionsArea.innerHTML = "";
+        
+        if (char.type === "jester") {
+            createBtn("JOKE", () => { addMessage("Şaka yap!", 'user'); setTimeout(() => addMessage(char.joke, 'bot'), 600); });
+            createBtn("ACT", () => { addMessage("ACT", 'user'); setTimeout(() => addMessage(char.act, 'bot'), 600); });
+            createBtn("FOTOĞRAF İSTE", () => { 
+                addMessage("Bana bir fotoğrafını gönder!", 'user');
+                setTimeout(() => window.open(`https://www.google.com/search?q=${char.name}+fanart+undertale&tbm=isch`), 800);
+            });
+        } 
+        else if (char.type === "serious") {
+            createBtn("ÇAY İÇ", () => { addMessage("Bir çay içelim mi?", 'user'); setTimeout(() => addMessage(char.tea, 'bot'), 600); });
+            createBtn("ŞAKA YAP", () => { addMessage("Bana bir şaka yap!", 'user'); setTimeout(() => addMessage(char.joke, 'bot'), 600); });
+            createBtn("DERTLEŞ", () => { addMessage("Gel dertleşelim...", 'user'); setTimeout(() => addMessage(char.confide, 'bot'), 600); });
+            createBtn("PLANLAR", () => { addMessage("Gelecek planların ne?", 'user'); setTimeout(() => addMessage(char.plan, 'bot'), 600); });
+            createBtn("FOTOĞRAF İSTE", () => { 
+                addMessage("Fotoğraf gönderir misin?", 'user');
+                setTimeout(() => {
+                    chatFlow.classList.add('shake');
+                    addMessage("HAYIR OLMAZ!", 'bot');
+                    setTimeout(() => chatFlow.classList.remove('shake'), 400);
+                }, 600);
+            });
+        } 
+        else if (char.type === "respectable") {
+            createBtn("HÜRMET ET", () => { addMessage("Size hürmet ediyorum efendim.", 'user'); setTimeout(() => addMessage(char.respect, 'bot'), 600); });
+            createBtn("SAYGILI OL", () => { addMessage("* Saygı duruşuna geçtin.", 'user'); setTimeout(() => addMessage(char.polite, 'bot'), 600); });
+            createBtn("AHLAKLI OL", () => { addMessage("Bana ahlaktan bahseder misiniz?", 'user'); setTimeout(() => addMessage(char.moral, 'bot'), 600); });
+        }
+    }
+
+    function createBtn(text, action) {
+        const b = document.createElement('button');
+        b.className = 'action-btn';
+        b.innerText = text;
+        b.onclick = action;
+        actionsArea.appendChild(b);
+    }
+
+    function addMessage(text, sender) {
+        const m = document.createElement('div');
+        m.className = `msg ${sender}`;
+        m.innerText = text;
+        chatFlow.appendChild(m);
+        chatFlow.scrollTop = chatFlow.scrollHeight;
+    }
+
+    function closeChat() {
+        chatScreen.style.display = 'none';
+        selectionGrid.style.display = 'grid';
+        mainTitle.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
