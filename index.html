@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DB: DESIRE MULTIVERSE V2</title>
+    <style>
+        @font-face { font-family: 'Saiyan'; src: url('https://fonts.cdnfonts.com/s/14925/Saiyan-Sans.woff') format('woff'); }
+        :root { --db-orange: #ff8c00; --db-blue: #1e90ff; --border: #fff; --panel: #0a0a0a; }
+        
+        body, html { margin: 0; padding: 0; height: 100%; background: #000; color: #e0e0e0; font-family: 'Arial', sans-serif; overflow: hidden; }
+
+        #bg-portrait { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: 1.5s; z-index: -1; pointer-events: none; }
+
+        #stat-bar { background: rgba(0,0,0,0.95); border-bottom: 2px solid var(--db-orange); padding: 12px; display: flex; justify-content: space-around; font-size: 0.75rem; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+        .stat-val { color: var(--db-orange); text-shadow: 0 0 8px var(--db-orange); font-size: 0.9rem; }
+
+        #chat-window { height: calc(100vh - 360px); overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { max-width: 85%; padding: 12px 15px; border-radius: 12px; font-size: 0.85rem; line-height: 1.5; border: 1px solid #222; animation: fadeIn 0.3s ease; }
+        .bot { align-self: flex-start; background: #111; border-left: 4px solid var(--db-orange); box-shadow: 2px 2px 10px rgba(255, 140, 0, 0.1); }
+        .user { align-self: flex-end; background: var(--db-blue); border-right: 4px solid #fff; color: white; }
+
+        .panel { position: fixed; bottom: 0; width: 100%; background: var(--panel); border-top: 3px solid var(--db-orange); padding: 12px; height: 300px; box-sizing: border-box; overflow-y: auto; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        
+        .btn { background: #1a1a1a; color: #fff; border: 1px solid #444; padding: 14px 4px; cursor: pointer; font-size: 0.65rem; text-transform: uppercase; transition: 0.2s; font-weight: bold; border-radius: 4px; }
+        .btn:active { background: var(--db-orange); color: #000; transform: scale(0.95); }
+        .btn-gold { border-color: gold; color: gold; box-shadow: 0 0 5px rgba(255,215,0,0.3); }
+        .btn-red { border-color: #ff3333; color: #ff3333; box-shadow: 0 0 5px rgba(255,0,0,0.3); }
+
+        #selector { position: fixed; inset: 0; background: radial-gradient(circle, #220000 0%, #000000 100%); z-index: 5000; padding: 20px; text-align: center; overflow-y: auto; }
+        .char-card { border: 2px solid #333; margin: 8px; padding: 10px; background: rgba(0,0,0,0.7); cursor: pointer; display: inline-block; width: 130px; transition: 0.3s; }
+        .char-card:hover { border-color: var(--db-orange); transform: translateY(-5px); box-shadow: 0 5px 15px rgba(255, 140, 0, 0.4); }
+        .char-card img { width: 100%; height: 160px; object-fit: cover; border-bottom: 2px solid #444; }
+
+        #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 6000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+
+        #hidden-action { display: none; grid-column: span 3; background: #8e44ad; color: #fff; border: 2px solid #d8a8ff; font-size: 0.8rem; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(142, 68, 173, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(142, 68, 173, 0); } 100% { box-shadow: 0 0 0 0 rgba(142, 68, 173, 0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<img id="bg-portrait" src="">
+
+<div id="selector">
+    <h1 style="color:var(--db-orange); font-family:'Saiyan'; font-size:3.5rem; text-shadow: 3px 3px #ff0000; margin-bottom: 30px;">DESIRE MULTIVERSE</h1>
+    <div id="char-list"></div>
+</div>
+
+<div id="stat-bar">
+    <div>ZENI: <span id="money-val" class="stat-val">100</span></div>
+    <div>AŞK: <span id="love-val" class="stat-val">0</span>%</div>
+    <div>HAZ: <span id="lust-val" class="stat-val">0</span>%</div>
+    <div>STATÜ: <span id="status-val" class="stat-val">YABANCI</span></div>
+</div>
+
+<div id="chat-window"></div>
+
+<div class="panel">
+    <div class="grid" id="main-controls">
+        <button class="btn" onclick="openMenu('İş')">💰 İŞE GİT</button>
+        <button class="btn" onclick="openMenu('Eylem')">💬 EYLEM</button>
+        <button class="btn" onclick="openMenu('Hediye')">🎁 HEDİYE</button>
+        <button class="btn btn-red" id="extra-btn" onclick="openMenu('Extra')">🔥 EXTRA ACT</button>
+        <button class="btn btn-gold" onclick="usePill()">💊 EVET HAPI</button>
+        <button class="btn" id="photo-btn" onclick="reqPhoto()" style="display:none; color:cyan; border-color:cyan;">📸 FOTO İSTE</button>
+        <button class="btn btn-red" id="marry-btn" onclick="marry()" style="grid-column: span 3; display:none; font-size: 0.9rem;">❤️ SEVGİLİ OL (MÜHÜRLE)</button>
+        <button class="btn" id="hidden-action" onclick="specialAction()">⚡ KRALIN ARZUSU (İTAAT ET)</button>
+    </div>
+</div>
+
+<div id="modal">
+    <h2 id="modal-title" style="color:var(--db-orange); font-family:'Saiyan'; font-size: 2.5rem; letter-spacing: 2px;">BÖLÜM</h2>
+    <div class="grid" id="modal-content" style="width:100%; max-width:450px;"></div>
+    <button class="btn btn-red" style="margin-top:30px; width:150px; font-size: 0.8rem;" onclick="closeModal()">GERİ DÖN</button>
+</div>
+
+<script>
+const CHARS = [
+    { n: "Android 18", color: "#1e90ff", img: "assets/18.png" }, { n: "Bulma", color: "#00ffff", img: "assets/bulma.png" },
+    { n: "Videl", color: "#ff4500", img: "assets/videl.png" }, { n: "Android 21", color: "#ff69b4", img: "assets/21.png" },
+    { n: "Cheelai", color: "#32cd32", img: "assets/cheelai.png" }, { n: "Towa", color: "#9932cc", img: "assets/towa.png" },
+    { n: "Caulifla", color: "#ffff00", img: "assets/caulifla.png" }, { n: "Kale", color: "#00ff00", img: "assets/kale.png" }
+];
+
+// DEV DİYALOG KÜTÜPHANESİ (Her eylem için 5 farklı cevap)
+const DIALOGUES = {
+    ACT: {
+        "Konuş": [
+            "Sesini duymak garip bir şekilde hoşuma gidiyor.", "Bana ne anlatmak istersin? Dinliyorum.", 
+            "Sözlerin zihnimi bulandırıyor, daha fazla konuş.", "Sadece senin sesine odaklanmak istiyorum...", 
+            "Bana böyle fısıldaman... içimde bir şeyleri uyandırıyor."
+        ],
+        "Sarıl": [
+            "Sıcaklığın... çok tanıdık ve rahatlatıcı.", "Beni daha sıkı tut, bırakma.", 
+            "Kalp atışını tenimde hissedebiliyorum.", "Biraz daha böyle kalalım, bu bana haz veriyor.", 
+            "Kollarında eridiğimi hissediyorum, ah..."
+        ],
+        "Antrenman": [
+            "Terlemek bana hep iyi hissettirmiştir!", "Ah, kaslarım yanıyor ama bu harika bir haz!", 
+            "Sınırlarımı zorlaman çok hoşuma gidiyor!", "Nefes nefese kaldım... daha sert vur!", 
+            "Bu yorgunluk hissi... içimde ateş yakıyor!"
+        ],
+        "İltifat": [
+            "Bunu duymak... yüzümü kızartıyor.", "Beni utandırıyorsun ama devam et.", 
+            "Gözlerin yalan söylemiyor, bana böyle bakman...", "İltifatların ruhumu okşuyor, kendimi özel hissediyorum.", 
+            "Bana böyle şeyler söyleyince... sana karşı koyamıyorum."
+        ],
+        "Şaka Yap": [
+            "Ciddi olamazsın... hehe.", "Buna güleceğimi sanmazdım ama fena değildi.", 
+            "Sadece seninleyken bu kadar rahat olabiliyorum.", "Beni eğlendirmeyi biliyorsun, bu çok çekici.", 
+            "Yüzümü güldürmen... bana çok iyi geldi."
+        ]
+    },
+    EXTRA: {
+        "Makineye Oturtma": [
+            "Ah! Makinenin titreşimi... beynimi uyuşturuyor!", "Lütfen... biraz daha hızlandır, bu çok zevkli!", 
+            "Vücudumdaki tüm enerji çekiliyor sanki, aah!", "Bu haz... dayanılmaz bir seviyede!", 
+            "Aaaah! Makine içimi titretiyor, aklımı kaybedeceğim!"
+        ],
+        "Kuyruk Kontrolü": [
+            "Ah! Hassas noktama dokunma... bekle, hayır dokun!", "Orayı tuttuğunda bütün gücüm çekiliyor...", 
+            "Ngh... bunu yapmayı seviyorsun değil mi? Ben de seviyorum...", "Vücudum irkilse de bu inanılmaz hoşuma gidiyor!", 
+            "Orası... ah, biraz daha sert lütfen!"
+        ],
+        "Mühür Patlatma": [
+            "İçimdeki güç taşıyor! Aaaah, bu nasıl bir his?!", "Mühür kırıldığında hissettiğim bu haz da ne?!", 
+            "Daha fazla tutamayacağım, içime akıyor her şey!", "Sınırlarım yok oluyor, devam et durma!", 
+            "Bütün enerjim sana karışıyor sanki, çok sıcak!"
+        ],
+        "Yerçekimi Odası": [
+            "Yerçekimi... beni yere yapıştırıyor ama bu çaresizlik hissi...", "Hareket edemiyorum... bana istediğini yapabilirsin.", 
+            "Bu ağırlık altında sana itaat etmek bana garip bir haz veriyor.", "Vücudum eziliyor ama içimde bir ateş yanıyor!", 
+            "Ağır... ama nefes nefese kalmak... ah, çok zevkli!"
+        ],
+        "Enerji Aktarımı": [
+            "Ah! İçime akan bu sıcak enerji de ne?!", "Daha fazla ver... hücrelerim yanıyor!", 
+            "Senin enerjinle dolup taşıyorum, aklımı yitireceğim!", "Bu aktarım... aklımı başımdan alacak kadar iyi!", 
+            "Bütün vücudum senin gücünle titriyor, durma!"
+        ],
+        "Tanrısal Ceza": [
+            "Lütfen... bu ceza çok ağır ama bir o kadar zevkli!", "Acı ve haz birbirine karıştı, daha fazla...", 
+            "Beni böyle cezalandırman... neden bu kadar hoşuma gidiyor?", "Daha sert! Bu boyun eğme hissini seviyorum!", 
+            "Ngh! İtaat etmekten başka çarem yok... sahibim."
+        ],
+        "Zihin Kontrolü": [
+            "Düşüncelerim... sadece sen varsın, gerisi boşluk.", "Bana ne istersen yaptırabilirsin, tamamen seninim.", 
+            "Zihnim senin ellerinde eriyor... çok rahatlatıcı.", "Kendi iradem yok... bu teslimiyet bana haz veriyor.", 
+            "Sadece senin fısıltılarını hissediyorum..."
+        ],
+        "Vücut Mühürleme": [
+            "Hareket edemiyorum... dokunuşlarına tamamen açığım.", "Beni bu şekilde hapsetmen... içimi titretiyor.", 
+            "Bedenim kilitli ama hislerim zirvede! Aah!", "Bana istediğini yapabilirsin, sana teslim oldum.", 
+            "Bağlanmak... bu bana inanılmaz bir zevk verdi!"
+        ],
+        "Kapsül Fantezisi": [
+            "Daracık alanda... sadece senin nefesin ve ben.", "Kapsülün içinde sıcaklığın tenimi yakıyor...", 
+            "Buradan çıkmak istemiyorum... bana dokunmaya devam et.", "Sıkışıp kalmak hiç bu kadar zevkli olmamıştı, ah...", 
+            "Bu dar alan... seninle olmak için mükemmel."
+        ],
+        "Galaktik Bağ": [
+            "Ruhlarımız ve bedenlerimiz birleşiyor... aaaaah!", "Evrenin en büyük hazzı bu olmalı, titriyorum!", 
+            "Boyutları aşan bir zevk! İçimde hissediyorum!", "Seninle bütünleşmek beni deli ediyor, durma!", 
+            "Yıldızlar sönse de bu his bitmesin, lütfen..."
+        ]
+    },
+    GIFT: {
+        "1 Bardak Su": [
+            "Sadece su mu? Boğazım kurumuştu zaten...", "İtaatimi göstermek için senin elinden içiyorum.", 
+            "Suyun bile senin elinden olması... güzel hissettirdi.", "Sıradan bir su... ama sen verdiğin için kıymetli.", 
+            "Lıkır lıkır... teşekkürler, serinletti."
+        ],
+        "Senzu Fasulyesi": [
+            "Bütün enerjim yerine geldi! Şimdi daha sert devam edebiliriz...", "Bu fasulye... içimi kıpır kıpır yaptı, çok güçlüyüm!", 
+            "Yorgunluğum uçtu gitti! Şimdi sıra bende.", "Ah, hücrelerim yenilendi! Bu harika bir his.", 
+            "Bana bunu layık gördüğün için teşekkürler, canlandım!"
+        ]
+    },
+    DEFAULT_GIFT: [
+        "Bu... bu çok değerli! Gerçekten beni mi düşündün?", "Hediyen kalbimi hızlandırdı, çok teşekkür ederim.", 
+        "Bana bu kadar değer vermen... kendimi özel hissettiriyor.", "Vay canına! Bunu hak edecek ne yaptım?", 
+        "Bu hediye... içimde sana karşı olan hisleri büyütüyor."
+    ]
+};
+
+const SAD_LINES = [
+    "Yine mi aynısı? Kendimi bir alet gibi hissediyorum.", "Bana gerçekten değer veriyor musun yoksa can sıkıntısı mı?",
+    "Ruhumun daraldığını hissediyorum, hep aynı rutin...", "Beni bir birey olarak görmeyi ne zaman öğreneceksin?",
+    "Senin yanında kendimi çok kullanılmış hissediyorum artık.", "Heyecanımı kaybettim, her şey çok mekanikleşti."
+];
+
+let cur = null, zeni = 100, love = 0, lust = 0, isLover = false, isDrugged = false;
+let lastAction = "", streak = 0;
+
+function init() {
+    const list = document.getElementById('char-list');
+    CHARS.forEach(c => {
+        list.innerHTML += `<div class="char-card" onclick="select('${c.n}')">
+            <img src="${c.img}" onerror="this.src='https://via.placeholder.com/130x160/222/888?text=${c.n}'">
+            <div style="color:${c.color}; font-size:0.85rem; padding:8px 0; font-weight:bold;">${c.n}</div>
+        </div>`;
+    });
+}
+
+function select(name) {
+    cur = CHARS.find(x => x.n === name);
+    document.getElementById('selector').style.display = 'none';
+    document.getElementById('bg-portrait').src = cur.img; 
+    document.getElementById('bg-portrait').style.opacity = "0.2";
+    addMsg(`${cur.n}: Bir savaşçı/ölümlü için fazla cüretkarsın. Bakalım bana neler hissettireceksin...`, 'bot');
+    updateUI();
+}
+
+function updateUI() {
+    document.getElementById('money-val').innerText = zeni;
+    document.getElementById('love-val').innerText = Math.floor(love);
+    document.getElementById('lust-val').innerText = Math.floor(lust);
+    document.getElementById('status-val').innerText = isLover ? "SEVGİLİ (MÜHÜRLÜ)" : (isDrugged ? "İTAATKAR KÖLE" : "YABANCI");
+    
+    document.getElementById('marry-btn').style.display = (love >= 50 && !isLover && !isDrugged) ? 'block' : 'none';
+    document.getElementById('photo-btn').style.display = isLover ? 'block' : 'none';
+    document.getElementById('extra-btn').style.opacity = (isLover || isDrugged) ? '1' : '0.3';
+}
+
+function addMsg(t, type) {
+    const win = document.getElementById('chat-window');
+    const d = document.createElement('div');
+    d.className = `msg ${type}`;
+    d.innerText = t;
+    win.appendChild(d);
+    win.scrollTop = win.scrollHeight;
+}
+
+function openMenu(type) {
+    const m = document.getElementById('modal');
+    const c = document.getElementById('modal-content');
+    document.getElementById('modal-title').innerText = type.toUpperCase();
+    m.style.display = 'flex';
+    c.innerHTML = "";
+
+    if(type === 'İş') {
+        const jobs = [
+            {n:"Sanayi", p:50, r:0}, {n:"Tiner Sat", p:250, r:0.3}, {n:"Kara Borsa", p:600, r:0.5},
+            {n:"Tanrıdan İste", p:2000, r:0.95}, {n:"Düzenli İş", p:120, r:0}, {n:"Düzensiz İş", p:40, r:0}
+        ];
+        jobs.forEach(j => c.innerHTML += `<button class="btn" onclick="doWork('${j.n}', ${j.p}, ${j.r})">${j.n} (+${j.p}Z)</button>`);
+    } else if(type === 'Eylem') {
+        Object.keys(DIALOGUES.ACT).forEach(a => c.innerHTML += `<button class="btn" onclick="handleAct('${a}')">${a}</button>`);
+    } else if(type === 'Hediye') {
+        const gifts = ["1 Bardak Su", "Senzu Fasulyesi", "Altın Zırh", "Kapsül Ev", "Elmas Yüzük", "Ejderha Topu", "Lüks Araba", "İpek Elbise", "Enerji İçeceği", "Özel Kitap"];
+        gifts.forEach((g, i) => c.innerHTML += `<button class="btn" onclick="buyGift('${g}', ${(i+1)*100})">${g} (${g==="1 Bardak Su" ? 0 : (i+1)*100}Z)</button>`);
+    } else if(type === 'Extra') {
+        if(!isLover && !isDrugged) { c.innerHTML = "<p style='color:red; grid-column:span 3;'>ÖNCE KALBİNİ ÇAL (SEVGİLİ OL) VEYA HAP İÇİR!</p>"; return; }
+        Object.keys(DIALOGUES.EXTRA).forEach(e => c.innerHTML += `<button class="btn btn-red" onclick="handleExtra('${e}')">${e}</button>`);
+    }
+}
+
+function doWork(n, p, r) {
+    closeModal();
+    if(Math.random() < r) {
+        addMsg(`* ${n} yaparken galaktik polislere yakalandın! Ceza ödedin.`, 'bot');
+        zeni = Math.max(0, zeni - 300);
+    } else {
+        zeni += p;
+        addMsg(`* ${n} ile ${p} Zeni kazandın.`, 'user');
+    }
+    updateUI();
+}
+
+function handleAct(a) {
+    closeModal();
+    if(a === lastAction) streak++; else { lastAction = a; streak = 0; }
+    
+    if(streak > 2) {
+        addMsg(cur.n + ": " + SAD_LINES[Math.floor(Math.random()*SAD_LINES.length)], 'bot');
+        love = Math.max(0, love - 10);
+    } else {
+        addMsg(`* [Eylem]: ${a} uyguladın.`, 'user');
+        setTimeout(() => {
+            let pool = DIALOGUES.ACT[a];
+            let resp = pool[Math.floor(Math.random() * pool.length)];
+            let prefix = isDrugged ? "Evet Sahibim... " : "";
+            addMsg(cur.n + ": " + prefix + resp, 'bot');
+            love += 5;
+            lust += 2;
+        }, 800);
+    }
+    updateUI();
+}
+
+function buyGift(g, p) {
+    if(g === "1 Bardak Su") p = 0;
+    if(zeni < p) { alert("Zeni yetersiz!"); return; }
+    zeni -= p;
+    closeModal();
+    addMsg(`* [Hediye]: ${g} verdin.`, 'user');
+    
+    setTimeout(() => {
+        let pool = DIALOGUES.GIFT[g] || DIALOGUES.DEFAULT_GIFT;
+        let resp = pool[Math.floor(Math.random() * pool.length)];
+        let prefix = isDrugged ? "Sen istersin de ben almaz mıyım... " : "";
+        addMsg(cur.n + ": " + prefix + resp, 'bot');
+        
+        if(g === "1 Bardak Su") document.getElementById('hidden-action').style.display = 'block';
+        else love += (p/15);
+        
+        updateUI();
+    }, 800);
+}
+
+function handleExtra(e) {
+    closeModal();
+    addMsg(`* [Fantezi]: ${e} başlatıldı!`, 'user');
+    setTimeout(() => {
+        let pool = DIALOGUES.EXTRA[e];
+        let resp = pool[Math.floor(Math.random() * pool.length)];
+        let prefix = isDrugged ? "İradem senin ellerinde... " : "";
+        addMsg(cur.n + ": " + prefix + resp, 'bot');
+        lust += 15;
+        updateUI();
+    }, 1000);
+}
+
+function usePill() {
+    if(zeni < 1000) { alert("Kutsal İtaat Hapı için 1000 Zeni gerekli!"); return; }
+    zeni -= 1000;
+    isDrugged = true;
+    addMsg("* Ona 'Evet Hapı' içirdin. Gözlerindeki parlaklık yerini sana olan mutlak itaate bıraktı...", 'user');
+    addMsg(cur.n + ": Zihnim boşalıyor... Artık ne dersen onu yapacağım. Emret.", 'bot');
+    updateUI();
+}
+
+function marry() {
+    isLover = true; love = 100;
+    addMsg(cur.n + ": Ruhlarımız sonsuza dek mühürlendi. Sadece sana aidim sevgilim...", 'bot');
+    updateUI();
+}
+
+function reqPhoto() {
+    addMsg("* Özel ve sansürsüz bir fotoğraf istedin...", 'user');
+    setTimeout(() => {
+        window.open(`https://www.google.com/search?q=${cur.n}+18`, '_blank');
+        addMsg(cur.n + ": Kimsenin görmediği o pozu senin için hazırladım... Bak bakalım beğenecek misin?", 'bot');
+    }, 1000);
+}
+
+function specialAction() {
+    addMsg("* ⚡ KRALIN ARZUSU tetiklendi! Tüm bariyerler yıkıldı.", 'user');
+    lust = 100; love = 100; isDrugged = true;
+    document.getElementById('hidden-action').style.display = 'none';
+    addMsg(cur.n + ": Suyu içtiğim an anladım... Ben tamamen seninim. Bana sınır tanımadan istediğini yap!", 'bot');
+    updateUI();
+}
+
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+init();
+</script>
+</body>
+</html>
